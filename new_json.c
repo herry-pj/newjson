@@ -493,7 +493,7 @@ static const char *__print_JsonObject(OBJECT_JSON_S *pstJsonObject, int fmt, int
         }
 
         *out++ = '{'; if (fmt) *out++ = '\n';
-        for (i = 0; i < depth; i++)
+        for (i = 0; i < depth - 1; i++)
         {
             if (fmt)
             {
@@ -517,7 +517,8 @@ static const char *__print_JsonObject(OBJECT_JSON_S *pstJsonObject, int fmt, int
     if (!enumentries) return 0;
 
     pstChild = pstJsonObject->pstChild;
-    for (j = 0; j < depth; j++)
+
+    for (j = 0; j < depth - 1; j++)
     {
         depthLen++;
     }
@@ -628,7 +629,6 @@ static const char *__print_FmtJsonValue(OBJECT_JSON_S *pstJsonObject, int fmt, i
     }
 }
 
-
 static void __delete_jsonObject(OBJECT_JSON_S *pstJsonObject)
 {
     OBJECT_JSON_S *pstNext;
@@ -656,20 +656,121 @@ extern char *NEWJSON_PrintJsonStr(OBJECT_JSON_S *pstJsonObject, int fmt)
 }
 
 
+OBJECT_JSON_S* cJSON_CreateObject(void)
+{
+    OBJECT_JSON_S *pstJsonObject = (OBJECT_JSON_S *)malloc(sizeof(OBJECT_JSON_S));
+    if (!pstJsonObject) return 0;
+
+    memset(pstJsonObject, 0, sizeof(OBJECT_JSON_S));
+    pstJsonObject->iJsonType = NJSON_OBJECT;
+
+    return pstJsonObject;
+}
 
 
+void cJSON_AddItemToArray(OBJECT_JSON_S *array, OBJECT_JSON_S *item)
+{
+    if (!array || !item) return 0;
+
+    OBJECT_JSON_S *pstNewItem;
+    OBJECT_JSON_S *pstCurItem;
+
+    if (!array->pstChild)
+    {
+        array->pstChild = item;
+        return;
+    }
+    else
+    {
+        pstNewItem = array->pstChild;
+        while (pstNewItem)
+        {
+            pstCurItem = pstNewItem;
+            pstNewItem = pstNewItem->pstNext;
+        }
+
+        item->pstPrev = pstCurItem;
+        pstCurItem->pstNext = item;
+    }
+}
 
 
+void cJSON_AddItemToObject(OBJECT_JSON_S *pstRootObject, const char* string, OBJECT_JSON_S *pstJsonItem)
+{
+    if (!pstJsonItem || !pstRootObject || !string) return 0;
 
+    pstJsonItem->pcKeyString = __print_strdup(string);
 
+    cJSON_AddItemToArray(pstRootObject, pstJsonItem);
+}
 
+OBJECT_JSON_S *cJSON_CreateString(const char* string)
+{
+    OBJECT_JSON_S *pstJsonObject = (OBJECT_JSON_S *)malloc(sizeof(OBJECT_JSON_S));
+    if (!pstJsonObject) return 0;
 
+    memset(pstJsonObject, 0, sizeof(OBJECT_JSON_S));
+    pstJsonObject->iJsonType = NJSON_STRING;
+    pstJsonObject->pcValueString = __print_strdup(string);
+    return pstJsonObject;
+}
 
+OBJECT_JSON_S *cJSON_CreateNumber(double number)
+{
+    OBJECT_JSON_S *pstJsonObject = (OBJECT_JSON_S *)malloc(sizeof(OBJECT_JSON_S));
+    if (!pstJsonObject) return 0;
 
+    memset(pstJsonObject, 0, sizeof(OBJECT_JSON_S));
+    pstJsonObject->iJsonType = NJSON_NUMBER;
+    pstJsonObject->dNumberDouble = number;
+    pstJsonObject->iNumber = (int)number;;
 
+    return pstJsonObject;
+}
 
+OBJECT_JSON_S* cJSON_CreateArray(void)
+{
+    OBJECT_JSON_S *pstJsonObject = (OBJECT_JSON_S *)malloc(sizeof(OBJECT_JSON_S));
+    if (!pstJsonObject) return 0;
 
+    memset(pstJsonObject, 0, sizeof(OBJECT_JSON_S));
+    pstJsonObject->iJsonType = NJSON_ARRAY;
 
+    return pstJsonObject;
+}
+
+OBJECT_JSON_S *cJSON_CreateIntArray(int *numbers, int count)
+{
+    if (!numbers || count < 0) return 0;
+
+    int i;
+
+    OBJECT_JSON_S* pstRet = cJSON_CreateArray();
+    OBJECT_JSON_S *current = pstRet;
+    for (i = 0; i < count; i++)
+    {
+        OBJECT_JSON_S* pstJson = cJSON_CreateNumber(numbers[i]);
+        if (!pstJson) return 0;
+
+        if (!i)
+        {
+            pstRet->pstChild = pstJson;
+            current = pstRet->pstChild;
+        }
+        else
+        {
+            while (current->pstNext)
+            {
+                current = current->pstNext;
+            }
+
+            pstJson->pstPrev = current;
+            current->pstNext = pstJson;
+        }
+    }
+
+    return pstRet;
+}
 
 
 
